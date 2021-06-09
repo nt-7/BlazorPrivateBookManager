@@ -1,0 +1,216 @@
+﻿@page "/book/create"
+
+@using Microsoft.Extensions.Configuration
+@using System.Collections.Generic
+@inject HttpClient Http
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@using System.Text.Json
+@using System.Text.Json.Serialization;
+
+@inject Services.BooksData BooksData
+@inject IToastService toastService
+
+
+<h5>Register Book</h5>
+<hr />
+
+<div class="container">
+    <div class="form-group">
+        <label for="exampleInputEmail1">ISBN10</label>
+        <input type="text" class="form-control" placeholder="Enter ISBN10" @bind="@bookForReg.isbn10" @bind:event="oninput" />
+        <small id="isbnHelp" class="form-text text-muted"> ISBN を入力して、Search ボタンを押してください。ISBN の情報を基に自動入力します。</small>
+    </div>
+</div>
+<div class="container" style="text-align: right;">
+    <button type="submit" class="btn btn-primary waves-effect waves-light" @onclick="SearchBook" align="right">Search</button>
+</div>
+<hr />
+@if (bookForReg != null)
+{
+    <div class="container">
+        <div class="form-group">
+            <label for="exampleInputEmail1">ISBN10</label>
+            <input type="text" class="form-control" placeholder="Enter ISBN10" @bind="@bookForReg.isbn10" @bind:event="oninput" />
+            <label for="exampleInputEmail1">Title</label>
+            <input type="text" class="form-control" placeholder="Enter Title" @bind="@bookForReg.title" @bind:event="oninput" />
+            <label for="exampleInputEmail1">Sub Title</label>
+            <input type="text" class="form-control" placeholder="Enter Sub Title" @bind="@bookForReg.subtitle" @bind:event="oninput" />
+            <label for="exampleInputEmail1">Published Date</label>
+            <input type="text" class="form-control" placeholder="Enter publishedDate" @bind="@bookForReg.publishedDate" @bind:event="oninput" />
+        </div>
+    </div>
+}
+
+<div class="container">
+    <div class="form-group">
+        <label for="exampleFormControlSelect1">進捗</label>
+        <select class="form-control" id="exampleFormControlSelect1" @bind="@bookForReg.status" @bind:event="onchange">
+            <option value="0">Not yet</option>
+            <option value="1">In progress</option>
+            <option value="2">Completed</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="summaryTextarea">感想 / コメント</label>
+        <textarea class="form-control" id="summaryTextarea" rows="3" @bind="@bookForReg.summary" @bind:event="oninput"></textarea>
+    </div>
+
+    @if (bookForReg != null)
+    {
+        <div>
+            <!-- Switch -->
+            <div class="switch" style="margin: 1% auto">
+                <label>
+                    Off
+                    <input type="checkbox" @bind="chcckedValue" />
+                    <span class="lever"></span>
+                    On
+                </label>
+                <small id="itemsHelp" class="form-text text-muted"> 上記の入力項目の結果を最後に確認したい方は ON にすると、以下に入力結果が表示されます。</small>
+            </div>
+        @if (chcckedValue)
+        {
+            <div>
+                <p><b>isbn10</b> : @bookForReg.isbn10</p>
+                <p><b>title</b> : @bookForReg.title</p>
+                <p><b>subtitle</b> : @bookForReg.subtitle</p>
+                <p><b>publishedDate</b> : @bookForReg.publishedDate</p>
+                <p>
+                    <b>authors</b> : @foreach (var author in bookForReg.authors)@(author + " ")
+                </p>
+                <p><b>status</b> : @bookForReg.status</p>
+                <p style="word-break: normal;"><b>summary</b> : @bookForReg.summary</p>
+            </div>
+        }
+        </div>
+    }
+</div>
+<div class="container" style="text-align: right; margin: 3% auto">
+    <button type="submit" class="btn btn-primary waves-effect waves-light lighten-1"
+            @onclick="registerBook" align="right">Register <i class="material-icons right">send</i></button>
+</div>
+<BlazoredToasts />
+
+
+@code {
+    private enum Status
+    {
+        NotYet,
+        InProgress,
+        Completed
+    }
+
+    [CascadingParameter]
+    private UserStateProvider UserStateProvider { get; set; }
+
+    [CascadingParameter]
+    private BookListStateProvider BookListStateProvider { get; set; }
+
+    private BookForReg bookForReg { get; set; } = new BookForReg();
+
+    private bool chcckedValue { get; set; } = false;
+
+    //private void ToggleNavMenu()
+    //{
+    //    collapseNavMenu = !collapseNavMenu;
+    //}
+
+    protected override void OnInitialized()
+    {
+        bookForReg.CId = UserStateProvider.ClientId;
+    }
+
+    private async void SearchBook()
+    {
+        var response = await Http.GetAsync("https://www.googleapis.com/books/v1/volumes?q=isbn:" + bookForReg.isbn10);
+        if (response.IsSuccessStatusCode)
+        {
+            string res = await response.Content.ReadAsStringAsync();
+
+            var jsonDoc = JsonDocument.Parse(res);
+            var root = jsonDoc.RootElement;
+
+            if (root.GetProperty("totalItems").GetInt64() > 0)
+            {
+                JsonElement volumeInfo = root.GetProperty("items")[0].GetProperty("volumeInfo");
+                try
+                {
+                    bookForReg.title = volumeInfo.GetProperty("title").GetString();
+                }
+                catch (KeyNotFoundException e)
+                {
+                    bookForReg.title = "";
+                    Console.WriteLine(e);
+                }
+                try
+                {
+                    bookForReg.subtitle = volumeInfo.GetProperty("subtitle").GetString();
+                }
+                catch (KeyNotFoundException e)
+                {
+                    bookForReg.subtitle = "";
+                    Console.WriteLine(e);
+                }
+                try
+                {
+                    bookForReg.authors = new List<string>();
+                    foreach (var author in volumeInfo.GetProperty("authors").EnumerateArray())
+                    {
+                        bookForReg.authors.Add(author.ToString());
+                    }
+                }
+                catch (Exception e)
+                {
+                    bookForReg.authors = new List<string>();
+                    Console.WriteLine(e);
+                }
+                try
+                {
+                    bookForReg.publishedDate = volumeInfo.GetProperty("publishedDate").GetString();
+                }
+                catch (KeyNotFoundException e)
+                {
+                    bookForReg.publishedDate = "";
+                    Console.WriteLine(e);
+                }
+                try
+                {
+                    bookForReg.thumbnail = volumeInfo.GetProperty("imageLinks").GetProperty("thumbnail").GetString();
+                }
+                catch (KeyNotFoundException e)
+                {
+                    bookForReg.thumbnail = "";
+                    Console.WriteLine(e);
+                }
+
+                StateHasChanged();
+            } else
+            {
+                toastService.ShowError("Oops! No item!");
+            }
+        }
+    }
+
+    private async void registerBook()
+    {
+        if (bookForReg != null && bookForReg.CId != null && bookForReg.title != "")
+        {
+            var response = await Http.PostAsJsonAsync($"{Configuration.GetValue<string>("CREATEBOOK")}", bookForReg);
+            if (response.IsSuccessStatusCode)
+            {
+                BookListStateProvider.isMemoized = false;
+                Navigation.NavigateTo("/book/list");
+            }
+            else
+            {
+                toastService.ShowError("Oops! Error has occured");
+            }
+        }
+        else
+        {
+            toastService.ShowError("Oops! Could you enter the title?");
+        }
+
+    }
+}

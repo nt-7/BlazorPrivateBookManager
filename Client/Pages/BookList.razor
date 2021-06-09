@@ -1,0 +1,244 @@
+﻿@page "/book/list"
+@using Microsoft.Extensions.Configuration
+@using System.Collections.Generic
+@inject HttpClient Http
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject Services.BooksData BooksData
+@inject IModalService Modal
+
+@inject IToastService toastService
+
+
+@if (hasLoaded)
+{
+    <h5>BookList</h5>
+    <hr />
+
+    <div class="above-right-btn">
+        <button class="btn blue-grey lighten-4" @onclick="UpdateList"><span class="blue-text text-darken-2"><i class="material-icons left">update</i>Update</span></button>
+        <small  class="form-text text-muted">最新情報に更新したい場合はクリック</small>
+    </div>
+
+    <div >
+        <div class="input-field col s12 m6">
+            @*<label for="filterSelect1">フィルター</label>*@
+            <small class="form-text text-muted">フィルターしたい場合はクリック</small>
+            <select class="form-control" id="exampleFormControlSelect1" @bind="FilterPropety" @bind:event="onchange">
+                <option value="">フィルターなし</option>
+                @foreach (var fp in FilterPropeties)
+                {
+                    <option value="@fp">@fp</option>
+                }
+            </select>
+        </div>
+        <div class="input-field col s12 m6">
+            @if (FilterPropety != "")
+            {
+                @if (FilterPropety == "status")
+                {
+                    FilterValue = "";
+                    <select class="form-control" id="filterSelectStatus" @bind="FilterStatusValue" @bind:event="onchange">
+                        <option value="0">Not yet</option>
+                        <option value="1">In progress</option>
+                        <option value="2">Completed</option>
+                    </select>
+                }
+                else
+                {
+                    FilterStatusValue = 0;
+                    <input type="text" class="filter" value="@FilterValue" @onchange="@((ChangeEventArgs __e) => FilterValue = __e.Value.ToString())" />
+                }
+            }
+            else
+            {
+                FilterStatusValue = 0;
+                FilterValue = "";
+                <input type="text" value="" />
+            }
+        </div>
+    </div>
+
+    @if (@books != null)
+    {
+
+        <table class="table">
+            <thead>
+                <tr>
+                    @foreach (var column in TableColumns)
+                    {
+                        <th>@column</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var book in @books)
+                {
+                    var b = book;
+                    @if (FilterPropety == "empty" || ((FilterPropety != "status" && (FilterValue == "" ||
+                        (((string)b[FilterPropety]).Contains(FilterValue)))) || (FilterPropety == "status" && (int)b["status"] == FilterStatusValue)))
+                    {
+                        @*@if (FilterPropety == "title") Console.WriteLine(((string)b[FilterPropety] + "  " + FilterValue));*@
+                    <tr>
+                        <td>@book.title</td>
+                        <td>@book.subtitle</td>
+                        <td>@book.authors[0]</td>
+                        <td>@book.publishedDate</td>
+                        <td>@book.isbn10</td>         
+                        <td>
+                            @if ((int)Status.NotYet == @book.status)
+                            {
+                                <span>Not yet</span>
+                            }
+                            else if ((int)Status.InProgress == @book.status)
+                            {
+                                <span>In progress</span>
+                            }
+                            else if ((int)Status.Completed == @book.status)
+                            {
+                                <span>Completed</span>
+                            }
+                        </td>
+                        <td>@book.updateDate.ToShortDateString()</td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="...">
+                                <button type="button" class="btn teal darken-1" @onclick="(() => ClickDetailsButton(b))">Details</button>
+                                <button type="button" class="btn teal lighten-2" @onclick="(() => ClickEditButton(b))">Edit</button>
+                                <button type="button" class="btn red lighten-1" @onclick="@(() => ShowModal(b))">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                    }
+                }
+            </tbody>
+        </table>
+
+    }
+}
+else
+{
+    <Loading />
+}
+<BlazoredToasts />
+
+
+@code {
+
+    private List<Book> books;
+
+    private bool hasLoaded { get; set; } = false;
+    private bool memorized { get; set; } = false;
+
+    private List<string> TableColumns { get; set; } = new List<string> { "Title", "SubTitle", "Authors", "PublishedDate", "ISBN10", "Status", "UpdateDate", "Operations" };
+    private List<string> TablePropeties { get; set; } = new List<string> { "title", "subtitle", "authors", "publishedDate", "isbn10", "status", "updateDate" };
+    private List<string> FilterPropeties { get; set; } = new List<string> { "title", "isbn10", "status" };
+
+    private string FilterPropety { get; set; } = "";
+    private string FilterValue { get; set; } = "";
+    private int FilterStatusValue { get; set; } = 0;
+
+    private enum Status
+    {
+        NotYet,
+        InProgress,
+        Completed
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!BookListStateProvider.isMemoized)
+        {
+            var payload = new ClientObj { CId = @UserStateProvider.ClientId };
+            var response = await Http.PostAsJsonAsync($"{Configuration.GetValue<string>("BOOKLIST")}", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                books = await response.Content.ReadFromJsonAsync<List<Book>>();
+                BookListStateProvider.memoizedBooks = books;
+                BookListStateProvider.isMemoized = true;
+            }
+            else
+            {
+                toastService.ShowError("Oops! No Item! Please register your book!");
+                // setTimeout
+                await Task.Delay(1000);
+                Navigation.NavigateTo("/book/create");
+            }
+        }
+        else
+        {
+            books = BookListStateProvider.memoizedBooks;
+        }
+        foreach (var book in books)
+        {
+            try
+            {
+                BooksData.BookDict.Add(book._id, book);
+            }
+            catch (ArgumentException)
+            {
+                BooksData.BookDict[book._id] = book;
+            }
+        }
+        hasLoaded = true;
+    }
+
+    private async void UpdateList()
+    {
+        var payload = new ClientObj { CId = @UserStateProvider.ClientId };
+        var response = await Http.PostAsJsonAsync($"{Configuration.GetValue<string>("BOOKLIST")}", payload);
+        books = await response.Content.ReadFromJsonAsync<List<Book>>();
+        BookListStateProvider.memoizedBooks = books;
+        BookListStateProvider.isMemoized = true;
+        StateHasChanged();
+    }
+
+    private void ClickDetailsButton(Book book)
+    {
+        Navigation.NavigateTo("/book/detail/" + book._id);
+    }
+
+    private void ClickEditButton(Book book)
+    {
+        Navigation.NavigateTo("/book/edit/" + book._id);
+    }
+
+    private async Task ClickDeleteButton(string _id)
+    {
+        var payload = new BookForDelete { CId = @UserStateProvider.ClientId, _id = _id };
+        var response = await Http.PostAsJsonAsync($"{Configuration.GetValue<string>("DELETEBOOK")}", payload);
+
+    }
+
+    private async Task ShowModal(Book book)
+    {
+        var confirmModal = Modal.Show<Confirm>("Confirm");
+        var result = await confirmModal.Result;
+
+        if (result.Cancelled)
+        {
+            Console.WriteLine("Modal was cancelled");
+        }
+        else
+        {
+            Console.WriteLine("Modal was closed");
+
+            await ClickDeleteButton(book._id);
+
+            var payload = new ClientObj { CId = @UserStateProvider.ClientId };
+            var response = await Http.PostAsJsonAsync($"{Configuration.GetValue<string>("BOOKLIST")}", payload);
+            books = await response.Content.ReadFromJsonAsync<List<Book>>();
+            BookListStateProvider.memoizedBooks = books;
+            BookListStateProvider.isMemoized = true;
+            StateHasChanged();
+
+            toastService.ShowSuccess("Successfully!");
+        }
+    }
+
+
+    [CascadingParameter]
+    private UserStateProvider UserStateProvider { get; set; }
+
+    [CascadingParameter]
+    private BookListStateProvider BookListStateProvider { get; set; }
+}

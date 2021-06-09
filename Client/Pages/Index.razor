@@ -1,0 +1,31 @@
+﻿@page "/"
+
+@using Microsoft.Extensions.Configuration
+@using System.Collections.Generic
+
+@inject HttpClient Http
+@inject IConfiguration Configuration
+
+
+<div class="main"></div>
+<h5>Hello! Welcome to Book Manager App!</h5>
+<hr />
+<p>
+    This App allows you to manage books on AAD account.
+</p>
+
+@if (@UserStateProvider.ClientId != "no login")
+{
+    <p>You've logged in through @UserStateProvider.ClientIdentityProvider.</p>
+}
+else
+{
+    <p>For using this app, you need to logged in through AAD.</p>
+    <a href="/login/aad">Log in AAD</a>
+}
+
+
+@code {
+    [CascadingParameter]
+    private UserStateProvider UserStateProvider { get; set; }
+}

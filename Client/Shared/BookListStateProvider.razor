@@ -1,0 +1,20 @@
+﻿@using Microsoft.Extensions.Configuration
+@using System.Collections.Generic
+@inject HttpClient Http
+@inject IConfiguration Configuration
+
+<CascadingValue Value="this">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    public List<Book> memoizedBooks;
+
+    public bool isMemoized { get; set; } = false;
+
+    [CascadingParameter]
+    private UserStateProvider UserStateProvider { get; set; }
+}

@@ -1,0 +1,66 @@
+﻿@inject NavigationManager NavigationManager
+
+
+<div class="top-row pl-4 navbar navbar-dark">
+    <a class="navbar-brand" href="/"><i class="material-icons">collections_bookmark</i> <b> Book Manager</b></a>
+    <button class="navbar-toggler" @onclick="ToggleNavMenu">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <ul class="nav flex-column">
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Home
+            </NavLink>
+        </li>
+        @if (@UserStateProvider.ClientId != "no login" && UserStateProvider.ClientUserRoles.Contains("admin"))
+        {
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="book/create">
+                    <span class="oi oi-book" aria-hidden="true"></span> Register Book
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="book/list">
+                    <span class="oi oi-list" aria-hidden="true"></span> Book List
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="userinfo">
+                    <span class="oi oi-person" aria-hidden="true"></span> User Info
+                </NavLink>
+            </li>
+        }
+        @if (@UserStateProvider.ClientId != "no login")
+        {
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" @onclick="LogoutButtonClick">
+                        <span class="oi oi-account-logout" aria-hidden="true"></span> Logout
+                    </NavLink>
+                </li>
+         }
+        </ul>
+</div>
+
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    [CascadingParameter]
+    private UserStateProvider UserStateProvider { get; set; }
+
+    private void LogoutButtonClick()
+    {
+        UserStateProvider.ClearUserStateAsync();
+        NavigationManager.NavigateTo(".auth/logout?post_logout_redirect_uri=/login", true);
+    }
+}

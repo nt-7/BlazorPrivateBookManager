@@ -1,0 +1,16 @@
+﻿@page "/logout"
+
+@inject NavigationManager Navigation
+
+
+@code {
+
+    [CascadingParameter]
+    private UserStateProvider UserStateProvider { get; set; }
+
+    protected override void OnInitialized()
+    {
+        UserStateProvider.ClearUserStateAsync();
+        Navigation.NavigateTo("/.auth/logout", false);
+    }
+}

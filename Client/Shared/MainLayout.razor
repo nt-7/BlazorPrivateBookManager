@@ -1,0 +1,35 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+
+<div class="page">
+    <div class="sidebar" id="slide-out">
+        <NavMenu />
+    </div>
+
+    <div class="main" style="@backImg">
+
+        @if (@UserStateProvider.ClientId != "no login")
+        {
+            <div class="content px-4">
+                @Body
+            </div>
+        }
+        else
+        {
+            <a href="/login/aad">Log in AAD</a>
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private UserStateProvider UserStateProvider { get; set; }
+
+    private void LogoutButtonClick()
+    {
+        UserStateProvider.ClearUserStateAsync();
+        Navigation.NavigateTo(".auth/logout?post_logout_redirect_uri=/login", true);
+    }
+
+    private string backImg { get; set; } = "";
+}

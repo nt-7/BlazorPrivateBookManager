@@ -1,0 +1,121 @@
+﻿@page "/book/detail/{Id}"
+
+@using System.Collections.Generic
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject Services.BooksData BooksData
+
+
+<h5>BookDetail</h5>
+<hr />
+
+<div class="above-left-btn">
+    <a class="btn page-link rounded-pill" href="/book/list">リストへ戻る</a>
+</div>
+
+@if (@book != null)
+{
+
+<div class="container">
+    <ul class="collection with-header">
+        <li class="collection-header">
+            <h5>@book.title </h5><h6> @book.subtitle</h6>
+            @if (@book.thumbnail != "")
+            {
+                <hr />
+                <img src="@book.thumbnail" alt="@book.title" />
+            }
+        </li>
+        <li class="collection-item"><b>authors</b> : @foreach (var author in @book.authors)@(author + " ")</li>
+            <li class="collection-item"><b>ISBN10</b> : @book.isbn10</li>
+            @if (@book.publishedDate != "")
+            {
+                <li class="collection-item"><b>Published Date</b> : @book.publishedDate</li>
+            }
+            @if (@book.description != "")
+            {
+                <li class="collection-item"><b>Description</b> :<br /> @book.description</li>
+            }
+            <li class="collection-item">
+                <b>Status</b> :
+                @switch (book.status)
+                {
+                    case 0:
+                        <span>Not yet</span>
+                        break;
+                    case 1:
+                        <span>In progress</span>
+                        break;
+                    case 2:
+                        <span>Completed</span>
+                        break;
+                    default:
+                        <span>N/A</span>
+                        break;
+                }
+                <div class="progress">
+                    @if ((int)Status.NotYet == @book.status)
+                    {
+                        <div class="determinate" style="width: 1%; height: 30px;"></div>
+                    }
+                    else if ((int)Status.InProgress == @book.status)
+                    {
+                        <span>In progress</span>
+                        <div class="determinate" style="width: 60%; height: 25px;"></div>
+                    }
+                    else if ((int)Status.Completed == @book.status)
+                    {
+                        <span>Completed</span>
+                        <div class="determinate" style="width: 100%; height: 25px;">Completed</div>
+                    }
+                </div>
+            </li>
+        </ul>
+        <div class="row">
+            <div class="col s12 m6">
+                <div class="card blue-grey darken-1">
+                    <div class="card-content white-text">
+                        <span class="card-title"><b>Comments</b></span>
+                        <hr />
+                        <p>
+                            @book.summary
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public string Id { get; set; }
+    private Book book { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Id != null)
+        {
+            try
+            {
+                book = BooksData.BookDict[Id];
+            }
+            catch
+            {
+                Navigation.NavigateTo("/book/list");
+            }
+        }
+        else
+        {
+            Navigation.NavigateTo("/book/list");
+        }
+    }
+
+    private enum Status
+    {
+        NotYet,
+        InProgress,
+        Completed
+    }
+}

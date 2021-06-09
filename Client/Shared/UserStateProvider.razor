@@ -1,0 +1,84 @@
+﻿@using Microsoft.Extensions.Configuration
+@using System.Collections.Generic
+@inject HttpClient Http
+@inject IConfiguration Configuration
+
+
+@if (hasLoaded)
+{
+    <CascadingValue Value="this">
+        @ChildContent
+    </CascadingValue>
+}
+else
+{
+<div class="d-flex justify-content-center">
+    <div class="spinner-border text-info" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+</div>
+<div><a href="/login/aad">Log in through AAD</a></div>
+}
+
+
+@code
+{
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    private bool hasLoaded = false;
+    public string Message { get; set; } = "Failed";
+    public string ClientId { get; set; } = "no login";
+    public string ClientIdentityProvider { get; set; } = "no login";
+    public string ClientUserDetails { get; set; } = "no login";
+    public List<string> ClientUserRoles { get; set; } = new List<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var res = await Http.GetAsync($"{Configuration.GetValue<string>("API")}/GetMessage?name=BlazorWASM");
+        Message = res.IsSuccessStatusCode ? await res.Content.ReadAsStringAsync() : "Failed";
+
+        var resMe = await Http.GetAsync($"{Configuration.GetValue<string>("USERJSON")}");
+        ClientPrincipalObject cpo = resMe.IsSuccessStatusCode ? await resMe.Content.ReadFromJsonAsync<ClientPrincipalObject>() : null;
+
+        if (cpo != null && cpo.clientPrincipal != null)
+        {
+            ClientPrincipal cp = cpo.clientPrincipal;
+            ClientId = cp.userId;
+            ClientIdentityProvider = cp.identityProvider;
+            ClientUserDetails = cp.userDetails;
+            ClientUserRoles = cp.userRoles.Count > 0 ? cp.userRoles : new List<string>();
+        }
+        else
+        {
+            ClientId = "no login";
+            ClientIdentityProvider = "no login";
+            ClientUserDetails = "no login";
+            ClientUserRoles = new List<string>();
+        }
+
+        hasLoaded = true;
+    }
+
+    private class ClientPrincipalObject
+    {
+        public ClientPrincipal clientPrincipal { get; set; }
+    }
+
+    private class ClientPrincipal
+    {
+        public string identityProvider { get; set; }
+        public string userId { get; set; }
+        public string userDetails { get; set; }
+        public List<string> userRoles { get; set; }
+    }
+
+    public void ClearUserStateAsync()
+    {
+        Message  = "Failed";
+        ClientId = "no login";
+        ClientIdentityProvider = "no login";
+        ClientUserDetails = "no login";
+        ClientUserRoles = new List<string>();
+    }
+}

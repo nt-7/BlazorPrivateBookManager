@@ -1,0 +1,14 @@
+﻿<div>
+    <p>Please click one of the buttons below to delete or cancel the modal.</p>
+
+    <button @onclick="Close" class="btn red darken-3">Delete</button>
+    <button @onclick="Cancel" class="btn blue-grey darken-1">Cancel</button>
+</div>
+
+
+@code {
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; }
+
+    void Close() => BlazoredModal.Close(ModalResult.Ok(true));
+    void Cancel() => BlazoredModal.Cancel();
+}

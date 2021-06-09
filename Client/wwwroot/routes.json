@@ -1,0 +1,48 @@
+{
+    "routes": [
+        {
+          "route": "/",
+          "allowedRoles": [ "authenticated", "admin" ]
+        },
+        {
+            "route": "/login",
+            "serve": "/.auth/login/aad"
+        },
+        {
+            "route": "/login/aad",
+            "serve": "/.auth/login/aad"
+        },
+        {
+            "route": "/login/google",
+            "serve": "404"
+        },
+        {
+            "route": "/.auth/login/twitter",
+            "statusCode": "404"
+        },
+        {
+            "route": "/.auth/login/facebook",
+            "statusCode": "404"
+        },
+        {
+            "route": "/.auth/login/github",
+            "statusCode": "404"
+        },
+        {
+          "route": "/me",
+          "serve": "/.auth/me"
+        },
+        {
+          "route": "/*",
+          "serve": "/",
+          "statusCode": 200
+        }
+    ],
+    "platformErrorOverrides": [
+        {
+          "errorType": "Unauthenticated",
+          "statusCode": "302",
+          "serve": "/login"
+        }
+    ]
+}

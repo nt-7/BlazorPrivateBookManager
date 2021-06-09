@@ -1,0 +1,123 @@
+﻿@page "/book/edit/{Id}"
+
+@using Microsoft.Extensions.Configuration
+@using System.Collections.Generic
+@inject HttpClient Http
+@inject IConfiguration Configuration
+@inject NavigationManager Navigation
+@inject Services.BooksData BooksData
+@using System.Text.Json
+@using System.Text.Json.Serialization;
+
+@inject IToastService toastService
+
+
+<h5>Edit Book : @if (@book != null)@book.title</h5>
+<hr />
+<div class="above-left-btn">
+    <a class="btn waves-effect waves-light cyan darken-1 rounded-pill" href="/book/list"><i class="material-icons">arrow_back</i> リストへ戻る</a>
+</div>
+
+@if (@book != null)
+{
+    <div class="container">
+        <div class="container">
+            <div class="form-group">
+                <label for="exampleInputEmail1">ISBN10</label>
+                <input type="text" class="form-control" placeholder="Enter ISBN10" value="@book.isbn10" @onchange="@((ChangeEventArgs __e) => changeBook("isbn10", __e.Value.ToString()))" />
+                <label for="exampleInputEmail1">Title</label>
+                <input type="text" class="form-control" placeholder="Enter Title" value="@book.title" @onchange="@((ChangeEventArgs __e) => changeBook("title", __e.Value.ToString()))" />
+                <label for="exampleInputEmail1">Sub Title</label>
+                <input type="text" class="form-control" placeholder="Enter Sub Title" value="@book.subtitle" @onchange="@((ChangeEventArgs __e) => changeBook("subtitle", __e.Value.ToString()))" />
+                <label for="exampleInputEmail1">Published Date</label>
+                <input type="text" class="form-control" placeholder="Enter publishedDate" value="@book.publishedDate" @onchange="@((ChangeEventArgs __e) => changeBook("publishedDate", __e.Value.ToString()))" />
+                <label for="exampleFormControlSelect1">進捗</label>
+                <select class="form-control" id="exampleFormControlSelect1" value="@book.status" @onchange="@((ChangeEventArgs __e) => changeBook("status", __e.Value.ToString()))">
+                    <option value="0">まだ読んでない</option>
+                    <option value="1">読み途中</option>
+                    <option value="2">読み終わった</option>
+                </select>
+                <label for="summaryTextarea">感想 / コメント</label>
+                <textarea class="form-control" id="summaryTextarea" rows="3" value="@book.summary" @onchange="@((ChangeEventArgs __e) => changeBook("summary", __e.Value.ToString()))"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" style="text-align: right; margin: 3% auto">
+        <button type="submit" class="btn btn-primary waves-effect waves-light light-blue lighten-1"
+                @onclick="updateBook" align="right">
+            Update <i class="material-icons right">send</i>
+        </button>
+    </div>
+}
+
+
+@code {
+    [CascadingParameter]
+    private UserStateProvider UserStateProvider { get; set; }
+
+    [CascadingParameter]
+    private BookListStateProvider BookListStateProvider { get; set; }
+
+    [Parameter]
+    public string Id { get; set; }
+
+    private Book book { get; set; }
+
+    private Dictionary<string, dynamic> editBookDict { get; set; } = new Dictionary<string, dynamic>() { };
+
+    protected override void OnInitialized()
+    {
+        if (Id != null)
+        {
+            try
+            {
+                book = BooksData.BookDict[Id];
+                editBookDict["CId"] = book.CId;
+                editBookDict["_id"] = book._id;
+            }
+            catch
+            {
+                Navigation.NavigateTo("/book/list");
+            }
+        }
+        else
+        {
+            Navigation.NavigateTo("/book/list");
+        }
+    }
+
+    private void changeBook(string key, string changedVal)
+    {
+        if (key == "status")
+        {
+            editBookDict[key] = int.Parse(changedVal);
+        }
+        else
+        {
+            editBookDict[key] = changedVal;
+        }
+    }
+
+    private async void updateBook()
+    {
+        if (editBookDict.Count > 2 && (!editBookDict.ContainsKey("title") || (editBookDict.ContainsKey("title") && editBookDict["title"] != "")))
+        {
+            var response = await Http.PostAsJsonAsync($"{Configuration.GetValue<string>("UPDATEBOOK")}", editBookDict);
+            if (response.IsSuccessStatusCode)
+            {
+                BookListStateProvider.isMemoized = false;
+                Navigation.NavigateTo("/book/list");
+            }
+            else
+            {
+                toastService.ShowError("Oops! Error has occured");
+            }
+        }
+        else
+        {
+            Console.WriteLine(editBookDict.Count);
+            toastService.ShowError("Oops! Could you input the title or any change?");
+        }
+    }
+}
