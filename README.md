@@ -1,5 +1,5 @@
 ## Private Book Manager based on Blazor wasm
-- Blazor WebAssembly 製のプライベート用 書籍管理アプリ
+- Blazor WebAssembly 製のプライベート用 書籍管理アプリ (Private リポジトリで管理しているのでこちらは公開アーカイブ用)
 - Blazor wasm と Static Web Apps 学習も兼ねて作成していた SPA + API (一部突貫工事気味...)
 - バックエンドの API は Azure Static Web Apps の統合 Functions (FaaS) を利用した Node.js
 - DB は Azure Cosmos DB を利用
